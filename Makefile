@@ -20,6 +20,7 @@ NON_APP_OBJECTS = $(filter-out $(BUILD_DIR)/ConsoleApp.o, $(OBJECTS))
 # Test files
 TEST_SOURCES = $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJECTS = $(TEST_SOURCES:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+TEST_DEPS = $(TEST_OBJECTS:.o=.d)
 TEST_TARGET = $(BIN_DIR)/tests
 
 # Executable target
@@ -52,12 +53,12 @@ $(TEST_TARGET): $(TEST_OBJECTS) $(NON_APP_OBJECTS)
 # Compile source files and generate .d files for dependencies
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
-# Compile test files
+# Compile test files and generate .d files for dependencies
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 # Clean build files
 clean:
@@ -67,9 +68,13 @@ clean:
 run: $(TARGET)
 	./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH)
 
-# Run all tests
+# Run all tests, or a specific test if TEST_FILTER is provided
 test: $(TEST_TARGET)
-	./$(TEST_TARGET)
+	@if [ -n "$(TEST_FILTER)" ]; then \
+		./$(TEST_TARGET) --gtest_filter=$(TEST_FILTER); \
+	else \
+		./$(TEST_TARGET); \
+	fi
 
 # Debug with Valgrind and run with arguments
 debug: CXXFLAGS += -O0 -g
@@ -77,6 +82,6 @@ debug: clean $(TARGET)
 	valgrind --leak-check=full ./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH)
 
 # Include the dependency files if they exist
--include $(DEPS)
+-include $(DEPS) $(TEST_DEPS)
 
-.PHONY: all clean run debug tests
+.PHONY: all clean run debug test
