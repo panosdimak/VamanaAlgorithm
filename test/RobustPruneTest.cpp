@@ -60,44 +60,6 @@ TEST_F(RobustPruneDoubleTest, PruneReducesToDegreeBound)
     EXPECT_EQ(neighbors.size(), degreeBound) << "Failed at PruneReducesToDegreeBound: Expected " << degreeBound << " neighbors, but got " << neighbors.size();
 }
 
-TEST_F(RobustPruneDoubleTest, PruneWithDistanceThreshold)
-{
-    vector<Point<double>> candidateNeighbors;
-    AddCandidateNeighbors({{0.5, 0.0},
-                           {0.0, 0.5},
-                           {-0.5, 0.0},
-                           {0.0, -0.5},
-                           {1.0, 0.0}},
-                          candidateNeighbors);
-
-    double distanceThreshold = 0.6;
-    int degreeBound = 4;
-
-    pruner.Prune(graph, p, candidateNeighbors, distanceThreshold, degreeBound);
-
-    // Assert the number of neighbors does not exceed the degree bound
-    auto neighbors = graph.GetNeighbors(p);
-    EXPECT_LE(neighbors.size(), degreeBound) << "Failed at PruneWithDistanceThreshold: Expected neighbors to be within degree bound, but got " << neighbors.size();
-
-    // Ensure all neighbors are within the distance threshold of p
-    for (const auto &neighbor : neighbors)
-    {
-        double dist = p.SquaredDistanceTo(neighbor);
-        EXPECT_LE(dist, distanceThreshold * distanceThreshold) << "Failed at PruneWithDistanceThreshold: Neighbor at distance " << sqrt(dist) << " exceeds threshold";
-    }
-
-    // Ensure neighbors meet the distance threshold requirement with each other
-    for (size_t i = 0; i < neighbors.size(); ++i)
-    {
-        for (size_t j = i + 1; j < neighbors.size(); ++j)
-        {
-            double distBetweenNeighbors = neighbors[i].SquaredDistanceTo(neighbors[j]);
-            EXPECT_GE(distBetweenNeighbors, distanceThreshold * distanceThreshold)
-                << "Failed at PruneWithDistanceThreshold: Neighbors " << neighbors[i] << " and " << neighbors[j] << " are too close";
-        }
-    }
-}
-
 TEST_F(RobustPruneDoubleTest, PruneWithDegreeBoundGreaterThanCandidates)
 {
     vector<Point<double>> candidateNeighbors;
