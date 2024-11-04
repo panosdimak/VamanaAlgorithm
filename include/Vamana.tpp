@@ -81,7 +81,7 @@ void Vamana<T>::BuildIndex(const vector<Point<T>> &data)
             }
         }
 
-        // Update the progress bar
+        // Update the progress bar every progressStep (1%)
         if (i % progressStep == 0 || i == randomPermutation.size() - 1) 
         {
             currentProgress = (i * 100) / totalPoints;
