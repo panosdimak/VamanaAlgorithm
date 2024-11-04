@@ -5,101 +5,83 @@
 #include <random>
 #include <iomanip>
 
-//Vamana constructor
-//k : number of neighbors to return  
-//L : limit on the number of candidates examined during search
-//R : max number of neighbors for each point 
-//a : pruning parameter --> if a=1 then pruning is more accurate(strict)
 template <typename T>
 Vamana<T>::Vamana(int k, int L, int R, double a) : K(k), L(L), R(R), A(a), VamanaGraph(), GreedySearcher(), RobustPruner() {}
 
 template <typename T>
 void Vamana<T>::BuildIndex(const vector<Point<T>> &data)
 {
-    //find a central point(medoid) to act as a starting point
+    // Find central point(medoid) to act as a starting point
     Medoid = FindMedoid(data); 
 
-    //initialize random permutation of data
     vector<size_t> randomPermutation(data.size());
-    //initialize vector with values from 0 to data size -1
+    // Initialize vector with values from 0 to data size -1
     iota(randomPermutation.begin(), randomPermutation.end(), 0);
-    //randomize the order of values using a random number generator 
+    // Randomize the order of values using a random number generator
     shuffle(randomPermutation.begin(), randomPermutation.end(), mt19937{random_device{}()});
 
-    //initialize each point in the graph with exactly R unique neighbors
+    // Initialize each point in the graph with exactly R unique neighbors
     for (const auto &point : data)
     {
-        //crete an unordered set of unique neighbors
         unordered_set<Point<T>> uniqueNeighbors;
         while (uniqueNeighbors.size() < static_cast<size_t>(R))
         {
-            //randomly select an index from data
             size_t randomIndex = randomPermutation[rand() % data.size()];
             const auto &candidate = data[randomIndex];
 
-            //ensure the candidate is not the same as the point itself
+            // Ensure the candidate is not the current point
             if (candidate != point) 
             {
                 uniqueNeighbors.insert(candidate);
             }
         }
-        //convert unique neighbors into a vector
         vector<Point<T>> randomNeighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
         VamanaGraph.SetNeighbors(point, randomNeighbors);
     }
 
-    //progress indicator variables
+    // Progress indicator variables
     size_t totalPoints = data.size();
-    //calculate the step for updating progress indicator,if total points is 1000
-    //the progress will be updated every 10 iterations (10 is 1% of 1000),
-    //also ensure that the progress is updated at least once
-    size_t progressStep = max(totalPoints / 100, static_cast<size_t>(1));
+    size_t progressStep = max(totalPoints / 100, static_cast<size_t>(1)); // Ensure progressStep is not 0
     size_t currentProgress = 0;
 
-    //for each point
     for (size_t i = 0; i < randomPermutation.size(); ++i)
     {
-        //access a point in random order
+        // Access points in random order
         const auto &point = data[randomPermutation[i]];
 
-        //find approximate neighbors using Greedy Search
+        // Find approximate neighbors using Greedy Search
         auto [_, visitedNeighbors] = GreedySearcher.FindApproximateNeighbors(VamanaGraph, Medoid, point, 1, L);
 
-        //add direct edge
+        // Add directed edge
         for (const auto &neighbor : visitedNeighbors)
         {
             VamanaGraph.AddEdge(point, neighbor);
         }
 
-        //pruning
         RobustPruner.Prune(VamanaGraph, point, visitedNeighbors, A, R);
 
-        //update visitedNeighbors
+        // Update visitedNeighbors and prune if needed
         for (const auto &neighbor : visitedNeighbors)
         {
             auto outNeighbors = VamanaGraph.GetNeighbors(neighbor);
 
-            //if the total number of neighbors exceeds R
-            if (outNeighbors.size() + 1 > static_cast<size_t>(R))
+            // Examine point only if not in outNeighbors
+            if (find(outNeighbors.begin(), outNeighbors.end(), point) == outNeighbors.end())
             {
-                //only add if point is not already in outNeighbors
-                if (find(outNeighbors.begin(), outNeighbors.end(), point) == outNeighbors.end())
+                // If number of out neighbors plus current point exceeds R, inlude point and prune
+                if (outNeighbors.size() + 1 > static_cast<size_t>(R))
                 {
-                    outNeighbors.push_back(point); 
+                    outNeighbors.push_back(point);
+                    RobustPruner.Prune(VamanaGraph, neighbor, outNeighbors, A, R);
                 }
-
-                RobustPruner.Prune(VamanaGraph, neighbor, outNeighbors, A, R);
-            }
-            //if it doesn't, add edge 
-            else
-            {
-                VamanaGraph.AddEdge(neighbor, point);
+                else
+                {
+                    VamanaGraph.AddEdge(neighbor, point);
+                }
             }
         }
 
-        //update the progress bar
-        //update every progressStep (1%) or 
-        //i is at last element,esuring that it finishes with 100% when all points are indexed
+        // Update the progress bar
         if (i % progressStep == 0 || i == randomPermutation.size() - 1) 
         {
             currentProgress = (i * 100) / totalPoints;
@@ -114,20 +96,19 @@ void Vamana<T>::BuildIndex(const vector<Point<T>> &data)
 template <typename T>
 Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data) const
 {
-    T minDistSum = numeric_limits<T>::max(); //initialize min sum to max possible value
-    Point<T> medoid = data[0]; //initialize medoid to the fisrt point of data
+    T minDistSum = numeric_limits<T>::max(); // Initialize to max possible value
+    Point<T> medoid = data[0];
 
-    //for each point
     for (const auto &candidate : data)
     {
         T distSum = 0;
-        //compute the distance between candidate and all the other points
+        // Compute the distance between candidate and all the other points
         for (const auto &other : data)
         {
-            //add distance to sum
             distSum += candidate.DistanceTo(other);
         }
-        //if it's smaller than midoid update midoid
+
+        // Point with smaller sum is the medoid
         if (distSum < minDistSum)
         {
             minDistSum = distSum;
@@ -143,7 +124,6 @@ Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data) const
 template <typename T>
 vector<Point<T>> Vamana<T>::Search(const Point<T> &query, int k) const
 {
-    //perform the greedy search starting from the medoid
     auto [approxNeighbors, _] = GreedySearcher.FindApproximateNeighbors(VamanaGraph, Medoid, query, k, L);
     return approxNeighbors;
 }
