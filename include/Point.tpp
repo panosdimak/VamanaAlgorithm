@@ -61,7 +61,7 @@ double Point<T>::DistanceTo(const Point<T> &other) const
 template <typename T>
 double Point<T>::SquaredDistanceTo(const Point<T> &other) const
 {
-    // Check dimension sizes match
+    // Check dimensions sizes match
     if (Coordinates.size() != other.Coordinates.size())
     {
         throw invalid_argument("Points must have the same dimensions for distance calculation.");
