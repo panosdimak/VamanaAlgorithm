@@ -9,50 +9,67 @@ on:
       - master
 
 jobs:
-  build_job:
+  build_and_test:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository and initialize submodules
+      # Step 1: Set up Node.js 20 (if needed by the project)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # Step 2: Checkout the repository and initialize submodules
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      # Debug: Verify repository structure
+      # Step 3: Debug - Verify repository structure
       - name: Debug Repository Structure
         run: |
           echo "Repository structure:"
           ls -R
 
-      # Install required dependencies
+      # Step 4: Install required dependencies
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ cmake make valgrind
 
-      # Build the project
+      # Step 5: Build the main project
       - name: Build Project
         run: |
           make clean || true
           make all
 
-      # Debug: Verify build outputs
-      - name: Debug Build Outputs
+      # Step 6: Debug - Verify project build outputs
+      - name: Debug Project Build Outputs
         run: |
-          echo "Build outputs:"
-          ls -R
+          echo "Project build outputs:"
+          ls -R ./bin
 
-      # Run the tests
+      # Step 7: Build Tests
+      - name: Build Tests
+        run: |
+          make test-build
+
+      # Step 8: Debug - Verify test build outputs
+      - name: Debug Test Build Outputs
+        run: |
+          echo "Test build outputs:"
+          ls -R ./bin
+
+      # Step 9: Run Tests
       - name: Run Tests
         run: |
-          make test
+          make test-run
 
-      # Memory Check with Valgrind
+      # Step 10: Memory Check with Valgrind
       - name: Memory Check with Valgrind
         if: always()
         run: |
-          echo "Checking test binary:"
+          echo "Checking test binary with Valgrind:"
           ls -l ./bin/
           if [ -f "./bin/tests" ]; then
             valgrind --leak-check=full ./bin/tests
