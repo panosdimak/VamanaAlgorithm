@@ -6,23 +6,29 @@
 | Orfanakou Phoebe      | 1115202000156 |
 
 ## VamanaAlgorithm
-This project implements the Vamana algorithm, designed for efficient k-nearest neighbor (k-NN) search in high-dimensional data spaces.  
+This project implements the Vamana algorithm, designed for efficient k-nearest neighbor (k-NN) search in high-dimensional data spaces.
 
-## Install Google Test
-sudo apt-get update  
-sudo apt-get install libgtest-dev cmake  
- 
-## Build Google Test (Optional)
-cd /usr/src/gtest  
-sudo cmake .  
-sudo make  
-sudo cp lib/libgtest*.a /usr/lib/  
+## Clone with Submodules
+git clone --recursive <repository_url>
+
+## Already Cloned Without --recursive
+git submodule update --init --recursive
+
+## Updating Submodules
+git pull --rebase
+git submodule update --recursive
  
 ## Build the project
 make  
- 
-## Run tests
-make test  
- 
+
 ## Run the main program
 make run  
+
+## Build tests
+make test-build
+ 
+## Run tests
+make test-run
+
+## Clean the project
+make clean
