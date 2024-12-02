@@ -193,7 +193,7 @@ vector<Point<T>> Vamana<T>::FilteredSearch(const vector<Point<T>> &data, const P
 }
 
 template <typename T>
-Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data, bool printMedoid = false) const
+Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data, bool printMedoid) const
 {
     T minDistSum = numeric_limits<T>::max(); // Initialize to max possible value
     Point<T> medoid = data[0];
