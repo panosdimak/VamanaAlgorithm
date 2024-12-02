@@ -8,7 +8,7 @@
 
 template <typename T>
 Vamana<T>::Vamana(int k, int L, int R, double a)
-    : K(k), L(L), R(R), A(a), VamanaGraph(), FilteredGraph(), StichedGraph(), Searcher(), Pruner() {}
+    : K(k), L(L), R(R), A(a), VamanaGraph(), FilteredGraph(), StitchedGraph(), Searcher(), Pruner() {}
 
 template <typename T>
 void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data)
@@ -137,37 +137,32 @@ unordered_map<T, int> Vamana<T>::FindFilterMedoids(const unordered_map<T, vector
 }
 
 template <typename T>
-vector<Point<T>> Vamana<T>::FilteredSearch(const vector<Point<T>> &data, const Point<T> &query, const unordered_set<T> &filters) const
+vector<Point<T>> Vamana<T>::PerformSearch(const Graph<T> &graph, const vector<Point<T>> &data,
+                                          const Point<T> &query, const unordered_set<T> &filters) const
 {
-    // Step 1: Identify starting points for the search
     vector<Point<T>> startPoints;
-
-    // Create a local filter set to handle cases where filters is empty
     unordered_set<T> localFilters = filters;
 
-    // If filters is empty, populate localFilters with all keys from Medoids
+    // If filters is empty, populate localFilters with all keys from FilterMedoids
     if (localFilters.empty())
     {
         for (const auto &medoid : FilterMedoids)
         {
             localFilters.insert(medoid.first);
 
-            // Step 2: Perform the filtered greedy search
-            auto [nearestStartPoint, _] = Searcher.FilteredGreedySearch(
-                FilteredGraph,         // Graph containing the data points
-                query,                 // The query point
-                {medoid.first},        // The set of filters to consider
-                {data[medoid.second]}, // Initial set of starting points
-                1,                     // Number of results required
-                1                      // Maximum candidate list size (adjustable)
-            );
+            // Find approximately nearest point with label to query instead of medoid
+            auto [nearestStartPoint, _] =
+                Searcher.FilteredGreedySearch(graph, query, {medoid.first}, {data[medoid.second]}, 1, 1);
 
-            startPoints.push_back(nearestStartPoint[0]);
+            if (!nearestStartPoint.empty())
+            {
+                startPoints.push_back(nearestStartPoint[0]);
+            }
         }
     }
     else
     {
-        // If filters is not empty, process only the specified filters
+        // If filters are specified, process only the specified filters
         for (const auto &filter : localFilters)
         {
             if (FilterMedoids.find(filter) != FilterMedoids.end())
@@ -177,24 +172,25 @@ vector<Point<T>> Vamana<T>::FilteredSearch(const vector<Point<T>> &data, const P
         }
     }
 
-    // If no starting points are available, return an empty result
     if (startPoints.empty())
     {
         return {};
     }
 
-    // Step 2: Perform the filtered greedy search
-    auto [nearestNeighbors, _] = Searcher.FilteredGreedySearch(
-        FilteredGraph, // Graph containing the data points
-        query,         // The query point
-        localFilters,  // The set of filters to consider
-        startPoints,   // Initial set of starting points
-        K,             // Number of results required
-        L              // Maximum candidate list size (adjustable)
-    );
+    auto [nearestNeighbors, _] =
+        Searcher.FilteredGreedySearch(graph, query, localFilters, startPoints, K, L);
 
-    // Step 3: Return the nearest neighbors
     return nearestNeighbors;
+}
+
+template <typename T>
+vector<Point<T>> Vamana<T>::FilteredSearch(const vector<Point<T>> &data, const Point<T> &query, const unordered_set<T> &filters) const
+{
+    return PerformSearch(
+        FilteredGraph, // Use the FilteredGraph for this search
+        data,
+        query,
+        filters);
 }
 
 template <typename T>
@@ -371,7 +367,7 @@ void Vamana<T>::StitchedVamanaIndexing(
         for (const auto &point : groupPoints)
         {
             // Get existing neighbors from the stitched graph
-            auto existingNeighbors = StichedGraph.GetNeighbors(point);
+            auto existingNeighbors = StitchedGraph.GetNeighbors(point);
 
             // Get new neighbors from the current Vamana subgraph
             const auto &newNeighbors = vamana.VamanaGraph.GetNeighbors(point);
@@ -385,7 +381,7 @@ void Vamana<T>::StitchedVamanaIndexing(
             mergedNeighbors.erase(unique(mergedNeighbors.begin(), mergedNeighbors.end()), mergedNeighbors.end());
 
             // Update the graph with the merged neighbors
-            StichedGraph.SetNeighbors(point, mergedNeighbors);
+            StitchedGraph.SetNeighbors(point, mergedNeighbors);
         }
     }
 
@@ -393,8 +389,8 @@ void Vamana<T>::StitchedVamanaIndexing(
     RobustPruner<T> pruner;
     for (const auto &point : data)
     {
-        const auto &neighbors = StichedGraph.GetNeighbors(point);
-        pruner.FilteredRobustPrune(StichedGraph, point, neighbors, A, R_stitched);
+        const auto &neighbors = StitchedGraph.GetNeighbors(point);
+        pruner.FilteredRobustPrune(StitchedGraph, point, neighbors, A, R_stitched);
     }
 
     FilterMedoids = FindFilterMedoids(CreateFilterMap(data), 0);
@@ -403,60 +399,9 @@ void Vamana<T>::StitchedVamanaIndexing(
 template <typename T>
 vector<Point<T>> Vamana<T>::StitchedSearch(const vector<Point<T>> &data, const Point<T> &query, const unordered_set<T> &filters) const
 {
-    // Step 1: Identify starting points for the search
-    vector<Point<T>> startPoints;
-
-    // Create a local filter set to handle cases where filters is empty
-    unordered_set<T> localFilters = filters;
-
-    // If filters is empty, populate localFilters with all keys from Medoids
-    if (localFilters.empty())
-    {
-        for (const auto &medoid : FilterMedoids)
-        {
-            localFilters.insert(medoid.first);
-
-            // Step 2: Perform the filtered greedy search
-            auto [nearestStartPoint, _] = Searcher.FilteredGreedySearch(
-                StichedGraph,          // Graph containing the data points
-                query,                 // The query point
-                {medoid.first},        // The set of filters to consider
-                {data[medoid.second]}, // Initial set of starting points
-                1,                     // Number of results required
-                1                      // Maximum candidate list size (adjustable)
-            );
-
-            startPoints.push_back(nearestStartPoint[0]);
-        }
-    }
-    else
-    {
-        // If filters is not empty, process only the specified filters
-        for (const auto &filter : localFilters)
-        {
-            if (FilterMedoids.find(filter) != FilterMedoids.end())
-            {
-                startPoints.push_back(data[FilterMedoids.at(filter)]);
-            }
-        }
-    }
-
-    // If no starting points are available, return an empty result
-    if (startPoints.empty())
-    {
-        return {};
-    }
-
-    // Step 2: Perform the filtered greedy search
-    auto [nearestNeighbors, _] = Searcher.FilteredGreedySearch(
-        StichedGraph, // Graph containing the data points
-        query,        // The query point
-        localFilters, // The set of filters to consider
-        startPoints,  // Initial set of starting points
-        K,            // Number of results required
-        L             // Maximum candidate list size (adjustable)
-    );
-
-    // Step 3: Return the nearest neighbors
-    return nearestNeighbors;
+    return this->PerformSearch(
+        StitchedGraph,
+        data,
+        query,
+        filters);
 }
