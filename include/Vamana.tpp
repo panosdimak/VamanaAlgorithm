@@ -22,7 +22,7 @@ void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data)
     shuffle(randomPermutation.begin(), randomPermutation.end(), mt19937{random_device{}()});
 
     size_t total = randomPermutation.size();
-    size_t step = total / 100; // Progress bar updates every 1%
+    size_t step = max(total / 100, static_cast<size_t>(1)); // Progress bar updates every 1%
 
     // Step 3: Iterate through points in random order
     for (size_t idx = 0; idx < total; ++idx)
@@ -346,23 +346,20 @@ void Vamana<T>::StitchedVamanaIndexing(
         }
 
         // Adjust parameters to ensure they are within valid bounds
-        int effectiveL = min(L_small, (static_cast<int>(groupPoints.size()) / 2));
-        int effectiveK = min(K, (static_cast<int>(groupPoints.size()) / 4));
-        if (effectiveK == 0)
-        {
-            effectiveK++;
-        }
+        int effectiveL = min(L_small, (static_cast<int>(groupPoints.size())));
+        int effectiveK = min(K, (static_cast<int>(groupPoints.size())));
 
         // Ensure R is more than log2(data.size()) but less than data.size()
         int minR = static_cast<int>(ceil(log2(groupPoints.size()))); // Ceil to round up
-        int effectiveR = min(max(minR + 1, R_small), (static_cast<int>(groupPoints.size()) / 3));
+        int effectiveR = min(max(minR, R_small), (static_cast<int>(groupPoints.size() - 1)));
 
         // Debug: Print values used for this Vamana indexing
         cout << "Processing label: " << label << endl;
         cout << "Group size: " << groupPoints.size() << endl;
         cout << "Effective K: " << effectiveK << endl;
         cout << "Effective L: " << effectiveL << endl;
-        cout << "Effective R: " << effectiveR << endl;
+        cout << "Effective R: " << effectiveR << endl
+             << endl;
 
         // Create a new Vamana instance for this group
         Vamana<T> vamana(effectiveK, effectiveL, effectiveR, A);

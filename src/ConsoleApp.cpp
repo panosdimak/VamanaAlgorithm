@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         // Build Vamana index
         MeasureExecutionTime("Building Vamana index", [&]()
                              {
-                                 vamana.StitchedVamanaIndexing(data, args.L / 5, args.R / 5, 3 * args.R);
+                                 vamana.StitchedVamanaIndexing(data, args.L >> 2, args.R >> 2, args.R);
                                  return 0; });
 
         // Load query dataset

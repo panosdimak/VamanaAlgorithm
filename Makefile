@@ -41,10 +41,10 @@ DATASET = dummy
 DATATYPE =
 
 # Arguments for the executable
-K = 30
-L = 60
-R = 5
-A = 1
+K = 50
+L = 100
+R = 30
+A = 1.2
 BASE_DATASET = $(DATA_DIR)/$(DATASET)-data$(DATATYPE).bin
 QUERY_DATASET = $(DATA_DIR)/$(DATASET)-queries$(DATATYPE).bin
 GROUND_TRUTH = $(DATA_DIR)/$(DATASET)-gt$(DATATYPE).bin
