@@ -29,7 +29,10 @@ template <typename T>
 void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data)
 {
     // Find medoid of each filter using the filterMap for efficiency
-    FilterMedoids = FindFilterMedoids(CreateFilterMap(data), 0);
+    if (FilterMedoids.empty())
+    {
+        FilterMedoids = FindFilterMedoids(CreateFilterMap(data), 0);
+    }
 
     // Generate a random permutation of the dataset
     vector<int> randomPermutation(data.size());

@@ -10,7 +10,7 @@ BIN_DIR = bin
 DATA_DIR = data
 
 # Files
-FILES = query_report.txt stitched_vamana.log
+FILES = *.log
 
 # Google Test directories
 GTEST_DIR = third_party/googletest
@@ -46,7 +46,7 @@ DATATYPE =
 # Arguments for the executable
 K = 50
 L = 100
-R = 30
+R = 60
 A = 1.2
 BASE_DATASET = $(DATA_DIR)/$(DATASET)-data$(DATATYPE).bin
 QUERY_DATASET = $(DATA_DIR)/$(DATASET)-queries$(DATATYPE).bin
