@@ -237,11 +237,11 @@ Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data, bool printMedoid) c
 template <typename T>
 void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data)
 {
-    // Find central point(medoid) to act as a starting point
+    // Find the central point (medoid) to act as a starting point
     Medoid = FindMedoid(data);
 
     vector<size_t> randomPermutation(data.size());
-    // Initialize vector with values from 0 to data size -1
+    // Initialize vector with values from 0 to data size - 1
     iota(randomPermutation.begin(), randomPermutation.end(), 0);
     // Randomize the order of values using a random number generator
     shuffle(randomPermutation.begin(), randomPermutation.end(), mt19937{random_device{}()});
@@ -267,9 +267,9 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data)
 
     // Progress indicator variables
     size_t totalPoints = data.size();
-    size_t progressStep = max(totalPoints / 100, static_cast<size_t>(1)); // Ensure progressStep is not 0
-    size_t currentProgress = 0;
+    size_t progressStep = max(totalPoints / 100, static_cast<size_t>(1)); // Ensure progressStep is at least 1
 
+    // Iterate through the random permutation of points
     for (size_t i = 0; i < randomPermutation.size(); ++i)
     {
         // Access points in random order
@@ -278,7 +278,7 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data)
         // Find approximate neighbors using Greedy Search
         auto [_, visitedNeighbors] = Searcher.GreedySearch(VamanaGraph, Medoid, point, 1, L);
 
-        // Add directed edge
+        // Add directed edges from the current point to visited neighbors
         for (const auto &neighbor : visitedNeighbors)
         {
             VamanaGraph.AddEdge(point, neighbor);
@@ -291,10 +291,10 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data)
         {
             auto outNeighbors = VamanaGraph.GetNeighbors(neighbor);
 
-            // Examine point only if not in outNeighbors
+            // Examine point only if it is not already in outNeighbors
             if (find(outNeighbors.begin(), outNeighbors.end(), point) == outNeighbors.end())
             {
-                // If number of out neighbors plus current point exceeds R, inlude point and prune
+                // If the number of out neighbors plus the current point exceeds R, prune
                 if (outNeighbors.size() + 1 > static_cast<size_t>(R))
                 {
                     outNeighbors.push_back(point);
@@ -310,13 +310,9 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data)
         // Update the progress bar every progressStep (1%)
         if (i % progressStep == 0 || i == randomPermutation.size() - 1)
         {
-            currentProgress = (i * 100) / totalPoints;
-            cout << "\rBuilding index: " << setw(3) << currentProgress << "% complete" << flush;
+            UpdateProgressBar(i + 1, totalPoints, "Building index");
         }
     }
-
-    cout << "\rBuilding index: 100% complete\n"
-         << flush;
 }
 
 template <typename T>
