@@ -42,7 +42,7 @@ Point<T>::Point(const Point &other)
 template <typename T>
 bool Point<T>::operator==(const Point<T> &other) const
 {
-    return Coordinates == other.Coordinates;
+    return Coordinates == other.Coordinates && Filter == other.Filter && Index == other.Index;
 }
 
 template <typename T>

@@ -54,7 +54,7 @@ TEST_F(PointTest, CopyConstructor)
 // Test the equality operator
 TEST_F(PointTest, EqualityOperator)
 {
-    Point<float> another_point(coords1, 1);
+    Point<float> another_point(coords1, 1, 1);
     EXPECT_EQ(point1, another_point);
 }
 
