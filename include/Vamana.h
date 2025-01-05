@@ -49,7 +49,7 @@ public:
     Vamana(int k, int l, int r, double a);
 
     void FilteredVamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex = true);
-    void VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex = true);
+    void VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex = true, bool consolePrint = true);
     void StitchedVamanaIndexing(const vector<Point<T>> &data, int L_small, int R_small,
                                 int R_stitched, string logFileName = "stitched_vamana.log", bool loadSaveIndex = true);
 

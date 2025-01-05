@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -Iinclude -std=c++23 -O3 -MMD -MP -g -Wall -Werror -Wunused -Wextra
+CXXFLAGS = -Iinclude -std=c++23 -O3 -MMD -MP -g -Wall -Werror -Wunused -Wextra -fopenmp
 
 # Directories
 SRC_DIR = src
@@ -41,14 +41,14 @@ TEST_TARGET = $(BIN_DIR)/tests
 TARGET = $(BIN_DIR)/ConsoleApp
 
 # Dataset directory
-DATASET = dummy
-DATATYPE =
+DATASET = dummy#contest
+DATATYPE =#-release-1m
 
 # Arguments for the executable
 K = 50
 L = 100
-R = 60
-A = 1.2
+R = 60#30
+A = 1.2#1.1
 BASE_DATASET = $(DATA_DIR)/$(DATASET)-data$(DATATYPE).bin
 QUERY_DATASET = $(DATA_DIR)/$(DATASET)-queries$(DATATYPE).bin
 GROUND_TRUTH = $(DATA_DIR)/$(DATASET)-gt$(DATATYPE).bin
