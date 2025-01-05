@@ -32,3 +32,7 @@ make test-run
 
 ## Clean the project
 make clean
+
+# Copyright
+GtGenerator.cpp, Distance.h, Io.h, TreadPool.h and Utils.h code used for gt generation adapted from:
+[sigmod-2024-contest](https://github.com/KevinZeng08/sigmod-2024-contest.git)
