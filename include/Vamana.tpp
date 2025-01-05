@@ -7,6 +7,7 @@
 #include <cmath>
 #include <fstream>
 #include <filesystem>
+#include <omp.h>
 
 template <typename T>
 Vamana<T>::Vamana(int k, int L, int R, double a)
@@ -52,6 +53,7 @@ void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data, bool loadSa
     size_t total = randomPermutation.size();
     size_t step = max(total / 100, static_cast<size_t>(1)); // Ensure step is at least 1
 
+#pragma omp parallel for schedule(dynamic)
     // Iterate through points in random order
     for (size_t idx = 0; idx < total; ++idx)
     {
@@ -70,10 +72,20 @@ void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data, bool loadSa
         // Apply RobustPrune to visited nodes
         Pruner.FilteredRobustPrune(FilteredGraph, currentPoint, visited, A, R);
 
-        // Update out-neighbors of the current point
-        for (const auto &neighbor : FilteredGraph.GetNeighbors(currentPoint))
+        vector<Point<T>> neighbors;
+#pragma omp critical(filteredCS)
         {
-            auto outNeighbors = FilteredGraph.GetNeighbors(neighbor);
+            neighbors = FilteredGraph.GetNeighbors(currentPoint);
+        }
+
+        // Update out-neighbors of the current point
+        for (const auto &neighbor : neighbors)
+        {
+            vector<Point<T>> outNeighbors;
+#pragma omp critical(filteredCS)
+            {
+                outNeighbors = FilteredGraph.GetNeighbors(neighbor);
+            }
             if (find(outNeighbors.begin(), outNeighbors.end(), currentPoint) == outNeighbors.end())
             {
                 // Ensure degree bound is respected
@@ -84,7 +96,10 @@ void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data, bool loadSa
                 }
                 else
                 {
-                    FilteredGraph.AddEdge(neighbor, currentPoint);
+#pragma omp critical(filteredCS)
+                    {
+                        FilteredGraph.AddEdge(neighbor, currentPoint);
+                    }
                 }
             }
         }
@@ -92,7 +107,10 @@ void Vamana<T>::FilteredVamanaIndexing(const vector<Point<T>> &data, bool loadSa
         // Check and update progress bar
         if (idx % step == 0 || idx == total - 1)
         {
-            UpdateProgressBar(idx + 1, total, "Filtered Vamana Indexing");
+#pragma omp critical
+            {
+                UpdateProgressBar(idx + 1, total, "Filtered Vamana Indexing");
+            }
         }
     }
 
@@ -255,7 +273,7 @@ Point<T> Vamana<T>::FindMedoid(const vector<Point<T>> &data, bool printMedoid) c
 }
 
 template <typename T>
-void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex)
+void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex, bool consolePrint)
 {
     // Find the central point (medoid) to act as a starting point
     Medoid = FindMedoid(data);
@@ -265,7 +283,10 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex)
         ifstream file(VamanaGraphName, ios::binary);
         VamanaGraph.Deserialize(file);
         file.close();
-        cout << "Graph successfully loaded from '" << VamanaGraphName << "'." << endl;
+        if (consolePrint)
+        {
+            cout << "Graph successfully loaded from '" << VamanaGraphName << "'." << endl;
+        }
         return;
     }
 
@@ -339,7 +360,10 @@ void Vamana<T>::VamanaIndexing(const vector<Point<T>> &data, bool loadSaveIndex)
         // Update the progress bar every progressStep (1%)
         if (i % progressStep == 0 || i == randomPermutation.size() - 1)
         {
-            UpdateProgressBar(i + 1, totalPoints, "Building index");
+            if (consolePrint)
+            {
+                UpdateProgressBar(i + 1, totalPoints, "Building index");
+            }
         }
     }
 
@@ -393,18 +417,24 @@ void Vamana<T>::StitchedVamanaIndexing(const vector<Point<T>> &data, int L_small
 
     size_t totalGroups = labelGroups.size();
     size_t step = max(totalGroups / 100, static_cast<size_t>(1)); // Ensure step is at least 1
-    size_t processedGroups = 0;
+    atomic<size_t> processedGroups(0);
 
-    // Process each group independently
-    for (const auto &[label, groupPoints] : labelGroups)
+// Process each group independently
+#pragma omp parallel for schedule(dynamic)
+    for (size_t groupIdx = 0; groupIdx < labelGroups.size(); ++groupIdx)
     {
+        auto it = next(labelGroups.begin(), groupIdx);
+        const auto &label = it->first;
+        const auto &groupPoints = it->second;
+
         // Skip groups with fewer than 2 points
         if (groupPoints.size() < 2)
         {
-            ++processedGroups;
+            processedGroups.fetch_add(1, memory_order_relaxed);
             if (processedGroups % step == 0 || processedGroups == totalGroups)
             {
-                UpdateProgressBar(processedGroups, totalGroups, "Stitched Vamana Indexing");
+#pragma omp critical(progressBarCS)
+                UpdateProgressBar(processedGroups.load(), totalGroups, "Stitched Vamana Indexing");
             }
             continue;
         }
@@ -416,47 +446,52 @@ void Vamana<T>::StitchedVamanaIndexing(const vector<Point<T>> &data, int L_small
         int minR = static_cast<int>(ceil(log2(groupPoints.size())));                        // Round up
         int effectiveR = min(max(minR, R_small), static_cast<int>(groupPoints.size() - 1)); // Keep within bounds
 
-        logFile << "Processing label: " << label << endl;
-        logFile << "Group size: " << groupPoints.size() << endl;
-        logFile << "Effective K: " << effectiveK << endl;
-        logFile << "Effective L: " << effectiveL << endl;
-        logFile << "Effective R: " << effectiveR << endl
-                << endl;
+#pragma omp critical
+        {
+            logFile << "Processing label: " << label << endl;
+            logFile << "Group size: " << groupPoints.size() << endl;
+            logFile << "Effective K: " << effectiveK << endl;
+            logFile << "Effective L: " << effectiveL << endl;
+            logFile << "Effective R: " << effectiveR << endl
+                    << endl;
+        }
 
         Vamana<T> vamana(effectiveK, effectiveL, effectiveR, A);
 
-        // Redirect cout to log file during VamanaIndexing
-        streambuf *coutBuffer = cout.rdbuf();      // Save the current buffer for cout
-        cout.rdbuf(logFile.rdbuf());               // Redirect cout to log file
-        vamana.VamanaIndexing(groupPoints, false); // Perform Vamana indexing for the current group
-        cout.rdbuf(coutBuffer);                    // Restore cout to its original buffer
+        vamana.VamanaIndexing(groupPoints, false, false);
 
-        // Integrate the Vamana subgraph into the main graph
         for (const auto &point : groupPoints)
         {
-            // Get existing neighbors from the stitched graph
-            auto existingNeighbors = StitchedGraph.GetNeighbors(point);
+            vector<Point<T>> existingNeighbors;
 
-            // Get new neighbors from the current Vamana subgraph
+// Synchronize read access to StitchedGraph
+#pragma omp critical(stitchedCS)
+            {
+                existingNeighbors = StitchedGraph.GetNeighbors(point);
+            }
+
             const auto &newNeighbors = vamana.VamanaGraph.GetNeighbors(point);
 
             // Merge existing and new neighbors
             vector<Point<T>> mergedNeighbors = existingNeighbors;
             mergedNeighbors.insert(mergedNeighbors.end(), newNeighbors.begin(), newNeighbors.end());
 
-            // Remove duplicates
             sort(mergedNeighbors.begin(), mergedNeighbors.end());
             mergedNeighbors.erase(unique(mergedNeighbors.begin(), mergedNeighbors.end()), mergedNeighbors.end());
 
-            // Update the stitched graph with the merged neighbors
-            StitchedGraph.SetNeighbors(point, mergedNeighbors);
+// Synchronize write access to StitchedGraph
+#pragma omp critical(stitchedCS)
+            {
+                StitchedGraph.SetNeighbors(point, mergedNeighbors);
+            }
         }
 
-        ++processedGroups;
+        processedGroups.fetch_add(1, memory_order_relaxed);
         // Update progress bar only at intervals defined by step
         if (processedGroups % step == 0 || processedGroups == totalGroups)
         {
-            UpdateProgressBar(processedGroups, totalGroups, "Stitched Vamana Indexing");
+#pragma omp critical(progressBarCS)
+            UpdateProgressBar(processedGroups.load(), totalGroups, "Stitched Vamana Indexing");
         }
     }
 

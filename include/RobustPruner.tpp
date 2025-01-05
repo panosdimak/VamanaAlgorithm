@@ -24,7 +24,14 @@ void RobustPruner<T>::FilteredRobustPrune(Graph<T> &graph, const Point<T> &p, co
     {
         addCandidate(candidate);
     }
-    for (const auto &neighbor : graph.GetNeighbors(p))
+
+    vector<Point<T>> neighbors;
+#pragma omp critical(filteredCS)
+    {
+        neighbors = graph.GetNeighbors(p);
+    }
+
+    for (const auto &neighbor : neighbors)
     {
         addCandidate(neighbor);
     }
@@ -79,8 +86,11 @@ void RobustPruner<T>::FilteredRobustPrune(Graph<T> &graph, const Point<T> &p, co
         candidates.erase(newEnd, candidates.end());
     }
 
-    // Step 4: Update graph with pruned neighbors
-    graph.SetNeighbors(p, prunedNeighbors);
+#pragma omp critical(filteredCS)
+    {
+        // Step 4: Update graph with pruned neighbors
+        graph.SetNeighbors(p, prunedNeighbors);
+    }
 }
 
 template <typename T>

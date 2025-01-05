@@ -46,8 +46,14 @@ pair<vector<Point<T>>, vector<Point<T>>> GreedySearcher<T>::FilteredGreedySearch
         Point<T> pStar = pStarIter->second; // Current best candidate
         visited.insert(pStar);              // Mark p* as visited
 
+        vector<Point<T>> neighbors;
+#pragma omp critical(filteredCS)
+        {
+            neighbors = graph.GetNeighbors(pStar);
+        }
+
         // Explore neighbors of pStar that satisfy the filter and haven't been visited
-        for (const auto &neighbor : graph.GetNeighbors(pStar))
+        for (const auto &neighbor : neighbors)
         {
             if (visited.count(neighbor) == 0 && queryFilters.count(neighbor.GetFilter()) > 0)
             {

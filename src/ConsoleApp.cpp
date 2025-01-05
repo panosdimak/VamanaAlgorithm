@@ -44,36 +44,41 @@ void RunVamanaProcess(Vamana<T> &vamana, const vector<Point<T>> &data, const vec
                              return 0; });
 
     // Searching
-    vector<vector<Point<T>>> allNeighbors;
+    vector<vector<Point<T>>> allNeighbors(queries.size()); // Preallocate results with the same size as queries
     MeasureExecutionTime("Performing " + modeName + " Vamana search", [&]()
                          {
-                             for (const auto &queryVector : queries)
-                             {
-                                 vector<float> dimensionPart(queryVector.begin() + 4, queryVector.end());
-                                 Point<T> query(dimensionPart);
-                                 int queryType = static_cast<int>(queryVector[0]);
+#pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < queries.size(); ++i)
+    {
+        const auto &queryVector = queries[i];
+        vector<float> dimensionPart(queryVector.begin() + 4, queryVector.end());
+        Point<T> query(dimensionPart);
+        int queryType = static_cast<int>(queryVector[0]);
+        vector<Point<T>> neighbors;
 
-                                 if (queryType == 0) // Vector-only query (no filter)
-                                 {
-                                     auto neighbors = (mode == VamanaMode::Filtered) ? vamana.FilteredSearch(data, query, {})
-                                                                                     : vamana.StitchedSearch(data, query, {});
-                                     allNeighbors.push_back(neighbors);
-                                 }
-                                 else if (queryType == 1) // Vector query (with filter)
-                                 {
-                                     float categoricalFilter = queryVector[1];
-                                     unordered_set<float> queryFilters = {categoricalFilter};
+        if (queryType == 0) // Vector-only query (no filter)
+        {
+            neighbors = (mode == VamanaMode::Filtered) ? vamana.FilteredSearch(data, query, {})
+                                                       : vamana.StitchedSearch(data, query, {});
+        }
+        else if (queryType == 1) // Vector query (with filter)
+        {
+            float categoricalFilter = queryVector[1];
+            unordered_set<float> queryFilters = {categoricalFilter};
 
-                                     auto neighbors = (mode == VamanaMode::Filtered) ? vamana.FilteredSearch(data, query, queryFilters)
-                                                                                     : vamana.StitchedSearch(data, query, queryFilters);
-                                     allNeighbors.push_back(neighbors);
-                                 }
-                                 else
-                                 {
-                                     allNeighbors.emplace_back(); // Unsupported types 3 and 4
-                                 }
-                             }
-                             return 0; });
+            neighbors = (mode == VamanaMode::Filtered) ? vamana.FilteredSearch(data, query, queryFilters)
+                                                       : vamana.StitchedSearch(data, query, queryFilters);
+        }
+        else
+        {
+            neighbors = {}; // Unsupported types 3 and 4
+        }
+
+        // Write results directly at the corresponding index
+        allNeighbors[i] = move(neighbors);
+    }
+
+    return 0; });
 
     // Save results
     ofstream resultsFile(outputPrefix + "_results.log");
