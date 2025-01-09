@@ -69,14 +69,14 @@ EXPERIMENT = $(EXP_DIR)/$(EXP_NAME)
 # Add Google Test include directories
 CXXFLAGS += $(addprefix -I, $(GTEST_INC))
 
+# Build rules
+all: ensure-dirs $(TARGET) $(GENERATOR_TARGET)
+
 # Ensure necessary directories exist
 ensure-dirs:
 	@mkdir -p $(DATA_DIR)
 	@mkdir -p $(EXP_DIR)
 	@mkdir -p $(INDEX_DIR)
-
-# Build rules
-all: ensure-dirs $(TARGET) $(GENERATOR_TARGET)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BIN_DIR)
