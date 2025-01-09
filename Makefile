@@ -96,7 +96,7 @@ $(GTEST_MAIN_OBJECT): $(GTEST_MAIN_SRC)
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 # Build tests
-test-build: ensure-dirs $(TEST_OBJECTS) $(NON_APP_OBJECTS) $(GTEST_OBJECT) $(GTEST_MAIN_OBJECT)
+test-build: $(TEST_OBJECTS) $(NON_APP_OBJECTS) $(GTEST_OBJECT) $(GTEST_MAIN_OBJECT)
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $(TEST_TARGET) $^ -pthread
 	@echo "Tests built successfully."
