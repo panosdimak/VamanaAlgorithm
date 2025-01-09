@@ -8,10 +8,11 @@ TEST_DIR = test
 BUILD_DIR = obj
 BIN_DIR = bin
 DATA_DIR = data
+INDEX_DIR = indexes
+EXP_DIR = experiments
 
 # Files
 FILES = *.log
-INDEX_FILES = *Graph.bin
 
 # Google Test directories
 GTEST_DIR = third_party/googletest
@@ -47,23 +48,35 @@ TEST_TARGET = $(BIN_DIR)/tests
 TARGET = $(BIN_DIR)/ConsoleApp
 
 # Dataset directory
-DATASET = contest#dummy,contest
-DATATYPE =-release-1m
+DATASET = dummy#dummy,contest
+DATATYPE =#-release-1m
+GRAPH_NAME = f_50_index
+EXP_NAME = f_50_exp
 
 # Arguments for the executable
 K = 50
 L = 100
 R = 60#30
 A = 1.2#1.1
+OPERATION = create-f#create-f,create-s,search
+
 BASE_DATASET = $(DATA_DIR)/$(DATASET)-data$(DATATYPE).bin
 QUERY_DATASET = $(DATA_DIR)/$(DATASET)-queries$(DATATYPE).bin
 GROUND_TRUTH = $(DATA_DIR)/$(DATASET)-gt$(DATATYPE).bin
+GRAPH = $(INDEX_DIR)/$(GRAPH_NAME).bin
+EXPERIMENT = $(EXP_DIR)/$(EXP_NAME)
 
 # Add Google Test include directories
 CXXFLAGS += $(addprefix -I, $(GTEST_INC))
 
 # Build rules
-all: $(TARGET) $(GENERATOR_TARGET)
+all: ensure-dirs $(TARGET) $(GENERATOR_TARGET)
+
+# Ensure necessary directories exist
+ensure-dirs:
+	@mkdir -p $(DATA_DIR)
+	@mkdir -p $(EXP_DIR)
+	@mkdir -p $(INDEX_DIR)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BIN_DIR)
@@ -115,24 +128,31 @@ $(BUILD_DIR)/GtGenerator.o: $(SRC_DIR)/GtGenerator.cpp
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR) $(FILES)
 
+# Clean experiment files
+clean-exp:
+	rm -rf $(EXP_DIR)
+
 # Clean index files
-clean-index:
-	rm -f $(INDEX_FILES)
+clean-ind:
+	rm -rf $(INDEX_DIR)
+
+# Clean all
+clean-all: clean clean-exp clean-ind
 
 # Run the program with arguments
-run: $(TARGET)
-	./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH)
+run: ensure-dirs $(TARGET)
+	./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH) $(OPERATION) $(GRAPH) $(EXPERIMENT)
 
 # Run GtGenerator
-run-generator: $(GENERATOR_TARGET)
+run-generator: ensure-dirs $(GENERATOR_TARGET)
 	./$(GENERATOR_TARGET) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH)
 
 # Debug with Valgrind and run with arguments
 debug: CXXFLAGS += -O0 -g
 debug: clean $(TARGET)
-	valgrind --leak-check=full ./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH)
+	valgrind --leak-check=full ./$(TARGET) $(K) $(L) $(R) $(A) $(BASE_DATASET) $(QUERY_DATASET) $(GROUND_TRUTH) $(OPERATION) $(GRAPH) $(EXPERIMENT)
 
 # Include the dependency files if they exist
 -include $(DEPS) $(TEST_DEPS) $(GENERATOR_DEP)
 
-.PHONY: all clean run debug test test-run run-generator
+.PHONY: all clean run debug test test-run run-generator ensure-dirs

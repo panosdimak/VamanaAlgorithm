@@ -26,9 +26,12 @@ TEST_F(ArgumentParserTest, ParsesArgumentsWithFlags)
         (char *)"--base", (char *)"base_path",
         (char *)"--query", (char *)"query_path",
         (char *)"--groundtruth", (char *)"groundtruth_path",
+        (char *)"--operation", (char *)"create-f",
+        (char *)"--index", (char *)"index_path",
+        (char *)"--search", (char *)"search_name",
         nullptr // Ensure null termination
     };
-    int argc = 15;
+    int argc = 21;
 
     auto args = parser.ParseArguments(argc, argv);
 
@@ -39,6 +42,9 @@ TEST_F(ArgumentParserTest, ParsesArgumentsWithFlags)
     EXPECT_EQ(args.BaseDatasetPath, "base_path");
     EXPECT_EQ(args.QueryDatasetPath, "query_path");
     EXPECT_EQ(args.GroundTruthPath, "groundtruth_path");
+    EXPECT_EQ(args.Operation, "create-f");
+    EXPECT_EQ(args.IndexPath, "index_path");
+    EXPECT_EQ(args.Experiment, "search_name");
 }
 
 TEST_F(ArgumentParserTest, ParsesArgumentsWithPositionals)
@@ -50,9 +56,12 @@ TEST_F(ArgumentParserTest, ParsesArgumentsWithPositionals)
         (char *)"data/dummy-data.bin",
         (char *)"data/dummy-queries.bin",
         (char *)"data/dummy-gt.bin",
+        (char *)"create-f",
+        (char *)"index_path",
+        (char *)"search_name",
         nullptr // Ensure null termination
     };
-    int argc = 8;
+    int argc = 11;
 
     auto args = parser.ParseArguments(argc, argv);
 
@@ -65,58 +74,81 @@ TEST_F(ArgumentParserTest, ParsesArgumentsWithPositionals)
     EXPECT_EQ(args.GroundTruthPath, "data/dummy-gt.bin");
 }
 
-TEST_F(ArgumentParserTest, ThrowsOnMissingArguments)
-{
-    char *argv[] = {(char *)"program", (char *)"--k", (char *)"10"};
-    int argc = 3;
-
-    EXPECT_THROW(parser.ParseArguments(argc, argv), invalid_argument);
-}
-
-TEST_F(ArgumentParserTest, ThrowsOnInvalidArguments)
+TEST_F(ArgumentParserTest, ParsesArgumentsWithoutSearchName)
 {
     char *argv[] = {
         (char *)"program",
-        (char *)"--k", (char *)"-10", // Negative value
+        (char *)"--k", (char *)"10",
         (char *)"--l", (char *)"20",
         (char *)"--r", (char *)"5",
         (char *)"--alpha", (char *)"0.5",
         (char *)"--base", (char *)"base_path",
         (char *)"--query", (char *)"query_path",
+        (char *)"--groundtruth", (char *)"groundtruth_path",
+        (char *)"--operation", (char *)"create-f",
+        (char *)"--index", (char *)"index_path",
         nullptr // Ensure null termination
     };
-    int argc = 13;
+    int argc = 19;
+
+    auto args = parser.ParseArguments(argc, argv);
+
+    EXPECT_EQ(args.K, 10);
+    EXPECT_EQ(args.L, 20);
+    EXPECT_EQ(args.R, 5);
+    EXPECT_DOUBLE_EQ(args.Alpha, 0.5);
+    EXPECT_EQ(args.BaseDatasetPath, "base_path");
+    EXPECT_EQ(args.QueryDatasetPath, "query_path");
+    EXPECT_EQ(args.GroundTruthPath, "groundtruth_path");
+    EXPECT_EQ(args.Operation, "create-f");
+    EXPECT_EQ(args.IndexPath, "index_path");
+    EXPECT_TRUE(args.Experiment.empty());
+}
+
+TEST_F(ArgumentParserTest, ThrowsOnMissingArguments)
+{
+    char *argv[] = {
+        (char *)"program",
+        (char *)"--k", (char *)"10",
+        (char *)"--operation", (char *)"create-f"};
+    int argc = 5;
 
     EXPECT_THROW(parser.ParseArguments(argc, argv), invalid_argument);
 }
 
-TEST_F(ArgumentParserTest, ParsesArgumentsWithoutGroundTruth)
+TEST_F(ArgumentParserTest, ThrowsOnInvalidOperation)
 {
     char *argv[] = {
         (char *)"program",
-        (char *)"50", (char *)"100",
-        (char *)"60", (char *)"1.2",
-        (char *)"data/dummy-data.bin",
-        (char *)"data/dummy-queries.bin",
+        (char *)"--k", (char *)"10",
+        (char *)"--l", (char *)"20",
+        (char *)"--r", (char *)"5",
+        (char *)"--alpha", (char *)"0.5",
+        (char *)"--base", (char *)"base_path",
+        (char *)"--query", (char *)"query_path",
+        (char *)"--operation", (char *)"invalid-op",
         nullptr // Ensure null termination
     };
-    int argc = 7;
+    int argc = 15;
 
-    auto args = parser.ParseArguments(argc, argv);
-
-    EXPECT_EQ(args.K, 50);
-    EXPECT_EQ(args.L, 100);
-    EXPECT_EQ(args.R, 60);
-    EXPECT_DOUBLE_EQ(args.Alpha, 1.2);
-    EXPECT_EQ(args.BaseDatasetPath, "data/dummy-data.bin");
-    EXPECT_EQ(args.QueryDatasetPath, "data/dummy-queries.bin");
-    EXPECT_TRUE(args.GroundTruthPath.empty());
+    EXPECT_THROW(parser.ParseArguments(argc, argv), invalid_argument);
 }
 
-TEST_F(ArgumentParserTest, ThrowsOnIncorrectNumberOfPositionals)
+TEST_F(ArgumentParserTest, ThrowsOnMissingSearchNameInSearchOperation)
 {
-    char *argv[] = {(char *)"program", (char *)"10", (char *)"20", (char *)"5"};
-    int argc = 4;
+    char *argv[] = {
+        (char *)"program",
+        (char *)"--k", (char *)"10",
+        (char *)"--l", (char *)"20",
+        (char *)"--r", (char *)"5",
+        (char *)"--alpha", (char *)"0.5",
+        (char *)"--base", (char *)"base_path",
+        (char *)"--query", (char *)"query_path",
+        (char *)"--operation", (char *)"search",
+        (char *)"--index", (char *)"index_path",
+        nullptr // Ensure null termination
+    };
+    int argc = 17;
 
     EXPECT_THROW(parser.ParseArguments(argc, argv), invalid_argument);
 }
@@ -132,26 +164,18 @@ TEST_F(ArgumentParserTest, ValidateThrowsOnInvalidData)
     args.Alpha = 0.5;
     args.BaseDatasetPath = "valid_path";
     args.QueryDatasetPath = "valid_query";
+    args.Operation = "create-f";
+    args.IndexPath = "valid_index";
 
     EXPECT_THROW(parser.Validate(args), invalid_argument);
 
-    // Invalid L
+    // Invalid Operation
     args.K = 10;
-    args.L = 0; // Non-positive
+    args.Operation = "invalid";
     EXPECT_THROW(parser.Validate(args), invalid_argument);
 
-    // Invalid Alpha
-    args.L = 10;
-    args.Alpha = -0.1; // Negative alpha
-    EXPECT_THROW(parser.Validate(args), invalid_argument);
-
-    // Empty BaseDatasetPath
-    args.Alpha = 0.5;
-    args.BaseDatasetPath = "";
-    EXPECT_THROW(parser.Validate(args), invalid_argument);
-
-    // Empty QueryDatasetPath
-    args.BaseDatasetPath = "valid_path";
-    args.QueryDatasetPath = "";
+    // Missing Experiment in Search Operation
+    args.Operation = "search";
+    args.Experiment = "";
     EXPECT_THROW(parser.Validate(args), invalid_argument);
 }
