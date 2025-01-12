@@ -24,6 +24,9 @@ make
 ## Run the main program
 make run  
 
+## Generate Ground Truth data
+make run-generator
+
 ## Build tests
 make test-build
  
