@@ -68,20 +68,22 @@ This can improve recall for filtered queries at the cost of increased constructi
 ```
 VamanaAlgorithm/
 ├── include/
-│   ├── Vamana.h              # Main algorithm class (templated)
-│   ├── Graph.h               # Directed graph with serialization
-│   ├── GreedySearcher.h      # Greedy beam search implementation
-│   ├── RobustPruner.h        # Edge pruning with alpha parameter
-│   ├── Point.h               # Data point with optional label/timestamp
-│   ├── Distance.h            # Distance computation utilities
-│   ├── Io.h                  # File I/O for datasets
-│   ├── ThreadPool.h          # Thread pool for parallel operations
-│   └── Utils.h               # Helper functions
+│   ├── Vamana.h              # Main algorithm interface
+│   ├── Vamana.tpp            # Vamana indexing and search implementation
+│   ├── Graph.h               # Directed graph interface
+│   ├── Graph.tpp             # Graph operations and serialization
+│   ├── GreedySearcher.h      # Search interface
+│   ├── GreedySearcher.tpp    # Greedy beam search implementation
+│   ├── RobustPruner.h        # Pruner interface
+│   ├── RobustPruner.tpp      # Edge pruning logic
+│   ├── Point.h               # Data point with label/timestamp
+│   └── ...                   # Utilities (I/O, threading, distance)
 ├── src/
-│   ├── main.cpp              # Main entry point and experiments
-│   └── GtGenerator.cpp       # Ground truth generation for evaluation
-├── test/
-│   └── VamanaTest.cpp        # Unit tests using Google Test
+│   ├── ConsoleApp.cpp        # Main entry point and CLI
+│   ├── DataLoader.cpp        # Dataset loading utilities
+│   ├── ArgumentParser.cpp    # Command-line argument parsing
+│   └── GtGenerator.cpp       # Ground truth generation
+├── test/                     # Unit tests using Google Test
 ├── third_party/
 │   └── googletest/           # Testing framework (submodule)
 ├── data/                     # Dataset directory
